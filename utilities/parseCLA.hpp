@@ -27,7 +27,7 @@ void parseCLA(int &argc, const char *argv[], std::ifstream &fin) {
     std::string fname = vm["fileName"].as<std::string>();
     fin.open(fname);
     if (!fin.is_open()) {
-      fmt::print("failed to open the file : {}", fname);
+      fmt::print("failed to open the file : {}\n", fname);
       exit(0);
     }
   }
