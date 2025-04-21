@@ -3,7 +3,7 @@ set(BOOST_ENABLE_CMAKE ON)
 set(BOOST_SKIP_INSTALL_RULES ON) # Set `OFF` for installation
 set(BUILD_SHARED_LIBS OFF)
 set(BOOST_ENABLE_MPI ON)
-set(BOOST_INCLUDE_LIBRARIES "program_options")
+set(BOOST_INCLUDE_LIBRARIES "program_options;serialization;mpi")
 
 CPMAddPackage(
   NAME Boost

@@ -4,13 +4,13 @@
 
 #include <boost/program_options.hpp>
 #include <fmt/format.h>
+#include <fstream>
 #include <iostream>
 #include <string.h>
-#include <fstream>
 
 namespace po = boost::program_options;
 
-void parseCLA(int &argc, const char *argv[], std::ifstream &fin) {
+void parseCLA(int &argc, char *argv[], std::string &fname) {
 
   po::options_description desc("Allowed Options", 100);
   // clang-format off
@@ -24,12 +24,7 @@ void parseCLA(int &argc, const char *argv[], std::ifstream &fin) {
   po::notify(vm);
 
   if (vm.count("fileName")) {
-    std::string fname = vm["fileName"].as<std::string>();
-    fin.open(fname);
-    if (!fin.is_open()) {
-      fmt::print("failed to open the file : {}\n", fname);
-      exit(0);
-    }
+    fname = vm["fileName"].as<std::string>();
   }
   if (vm.count("help")) {
     std::cout << desc;
