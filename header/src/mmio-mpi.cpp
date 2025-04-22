@@ -16,14 +16,17 @@ struct Entry {
 };
 
 void printfilewithrank(std::vector<Entry> &vec, int rank) {
-    std::string filename("rank");
-    filename += '1' + rank;
-    std::ofstream fout(filename);
-    for (auto &[row, col, val] : vec) {
-      fout << row << " " << col << " " << val << std::endl;
-    }
+  std::string filename("rank");
+  filename += '1' + rank;
+  std::ofstream fout(filename);
+  if (!fout.is_open()) {
+    fmt::print("failure to open the out file\n");
   }
-  
+
+  for (auto &[row, col, val] : vec) {
+    fout << row << " " << col << " " << val << std::endl;
+  }
+}
 
 std::vector<Entry> paralleldataload(std::ifstream &fin, size_t &nrows,
                                     size_t &ncols, size_t &nnz, int rank,
@@ -72,7 +75,7 @@ std::vector<Entry> paralleldataload(std::ifstream &fin, size_t &nrows,
   return localchunk;
 }
 
-void read_file(const std::string &fname) {
+void read_file(const std::string &fname, bool writerankfiles) {
   MPI_Offset data_offset = 0;
   MPI_Offset filesize;
 #if 0
@@ -86,6 +89,10 @@ void read_file(const std::string &fname) {
 #endif
   size_t nrows = 0, ncols = 0, nnz = 100;
   std::ifstream fin(fname);
+  if (!fin.is_open()) {
+    fmt::print("failed to open the file {}\n", fname);
+    exit(0);
+  }
 
   mpi::communicator world;
 
@@ -93,15 +100,16 @@ void read_file(const std::string &fname) {
   auto localchunk = paralleldataload(fin, nrows, ncols, nnz, world.rank(),
                                      world.size(), filesize, data_offset);
   auto end = MPI_Wtime();
-  printfilewithrank(localchunk, world.rank());
   int localsize = localchunk.size();
   int globalsum = 0;
-
   mpi::reduce(world, localsize, globalsum, std::plus<int>(), 0);
 
   if (0 == world.rank()) {
     double et = end - start;
     fmt::print("time taken : {} | bandwidth : {}\n", et, filesize / et / 1e9);
     fmt::print("nnz == globalsum {}\n", nnz == globalsum);
+  }
+  if (writerankfiles) {
+    printfilewithrank(localchunk, world.rank());
   }
 }

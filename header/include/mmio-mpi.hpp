@@ -4,8 +4,6 @@
 
 #include <string>
 
-void read_file(const std::string&);
-
-
+void read_file(const std::string &, bool);
 
 #endif

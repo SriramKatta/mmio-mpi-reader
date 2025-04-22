@@ -6,28 +6,44 @@
 #include <fmt/format.h>
 #include <fstream>
 #include <iostream>
-#include <string.h>
+#include <string>
 
 namespace po = boost::program_options;
 
-void parseCLA(int &argc, char *argv[], std::string &fname) {
-
+void parseCLA(int &argc, char *argv[], std::string &fname,
+              bool &writerankfiles) {
   po::options_description desc("Allowed Options", 100);
   // clang-format off
-    desc.add_options()
+  desc.add_options()
     ("help,h", "produce help message")
-    ("fileName,F", po::value<std::string>(), "matrix file name")
-    ;
+    ("file,F", po::value<std::string>(), "matrix file name (positional)")
+    ("Writefiles,W", po::value<std::string>()->default_value("false"), "write files");
   // clang-format on
+
+  po::positional_options_description p;
+  p.add("file", 1);       // map the first positional argument to "file"
+  p.add("Writefiles", 2); // map the first positional argument to "file"
+
   po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::store(
+      po::command_line_parser(argc, argv).options(desc).positional(p).run(),
+      vm);
   po::notify(vm);
 
-  if (vm.count("fileName")) {
-    fname = vm["fileName"].as<std::string>();
+  if (vm.count("file")) {
+    fname = vm["file"].as<std::string>();
+  } else {
+    fmt::print("Error: No matrix file provided.\n");
+    std::cout << desc << "\n";
+    exit(1);
   }
+
+  if (vm.count("Writefiles")) {
+    writerankfiles = (vm["Writefiles"].as<std::string>() == "true");
+  }
+
   if (vm.count("help")) {
-    std::cout << desc;
+    std::cout << desc << "\n";
     exit(0);
   }
 }
