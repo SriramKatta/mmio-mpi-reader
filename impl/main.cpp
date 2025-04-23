@@ -1,19 +1,25 @@
+#include <fmt/format.h>
+#include <mpi.h>
+#include <string>
+#include <vector>
+
 #include "mmio-mpi.hpp"
 #include "parseCLA.hpp"
-#include <boost/mpi.hpp>
-#include <fmt/format.h>
-namespace mpi = boost::mpi;
 
 int main(int argc, char *argv[]) {
-  mpi::environment env(argc, argv);
-  mpi::communicator world;
+  MPI_Init(&argc, &argv);
   std::string fname;
-  bool writerankfiles;
-  parseCLA(argc, argv, fname, writerankfiles);
-#if 0
-  read_file("../matrix/bcsstm04.mtx", true);
-#else
-  read_file(fname, writerankfiles);
-#endif
+  parseCLA(argc, argv, fname);
+  int rank = 0;
+  int size = 1;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  std::vector<double> res = read_file(fname);
+
+  if (0 == rank) {
+    
+  }
+
+  MPI_Finalize();
   return 0;
 }

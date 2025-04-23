@@ -3,7 +3,10 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
-void read_file(const std::string &, bool);
+struct Entry;
+void printfilewithrank(std::vector<Entry> &, int);
+std::vector<Entry> ead_file(const std::string &);
 
 #endif

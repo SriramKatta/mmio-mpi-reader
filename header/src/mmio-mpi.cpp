@@ -1,12 +1,9 @@
-#include <boost/mpi.hpp>
 #include <fmt/format.h>
 #include <fstream>
 #include <mpi.h>
 #include <vector>
 
 #include "mmio-mpi.hpp"
-
-namespace mpi = boost::mpi;
 
 struct Entry {
   int row;
@@ -17,7 +14,7 @@ struct Entry {
 
 void printfilewithrank(std::vector<Entry> &vec, int rank) {
   std::string filename("rank");
-  filename += '1' + rank;
+  filename += std::to_string(rank);
   std::ofstream fout(filename);
   if (!fout.is_open()) {
     fmt::print("failure to open the out file\n");
@@ -75,41 +72,69 @@ std::vector<Entry> paralleldataload(std::ifstream &fin, size_t &nrows,
   return localchunk;
 }
 
-void read_file(const std::string &fname, bool writerankfiles) {
+std::vector<Entry> read_file(const std::string &fname, bool writerankfiles) {
   MPI_Offset data_offset = 0;
   MPI_Offset filesize;
-#if 0
-  filesize = std::filesystem::file_size(filename);
-#else
   MPI_File fh;
   MPI_File_open(MPI_COMM_WORLD, fname.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL,
                 &fh);
   MPI_File_get_size(fh, &filesize);
   MPI_File_close(&fh);
-#endif
   size_t nrows = 0, ncols = 0, nnz = 100;
   std::ifstream fin(fname);
   if (!fin.is_open()) {
     fmt::print("failed to open the file {}\n", fname);
     exit(0);
   }
+  int rank = 0;
+  int size = 1;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  mpi::communicator world;
-
+#if BENCHMARK
   auto start = MPI_Wtime();
-  auto localchunk = paralleldataload(fin, nrows, ncols, nnz, world.rank(),
-                                     world.size(), filesize, data_offset);
+#endif
+  auto localchunk = paralleldataload(fin, nrows, ncols, nnz, rank, size,
+                                     filesize, data_offset);
+#if BENCHMARK
   auto end = MPI_Wtime();
-  int localsize = localchunk.size();
-  int globalsum = 0;
-  mpi::reduce(world, localsize, globalsum, std::plus<int>(), 0);
+#endif
 
-  if (0 == world.rank()) {
+  // Step 1: Gather sizes
+  std::vector<int> recvcounts(size);
+  int sendcount = localchunk.size();
+  MPI_Gather(&sendcount, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, 0,
+             MPI_COMM_WORLD);
+
+  // Step 2: Compute displacements on rank 0
+  std::vector<int> displs;
+  int total_count = 0;
+  if (rank == 0) {
+    displs.resize(size);
+    for (int i = 0; i < size; ++i) {
+      displs[i] = total_count;
+      total_count += recvcounts[i];
+    }
+  }
+
+  std::vector<Entry> gathered_data;
+  if (rank == 0) {
+    gathered_data.resize(total_count);
+  }
+
+  MPI_Gatherv(localchunk.data(), sendcount, MPI_DOUBLE, gathered_data.data(),
+              recvcounts.data(), displs.data(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  if (0 == rank) {
+#if BENCHMARK
     double et = end - start;
     fmt::print("time taken : {} | bandwidth : {}\n", et, filesize / et / 1e9);
-    fmt::print("nnz == globalsum {}\n", nnz == globalsum);
+#endif
+    fmt::print("test passed : {}\n", nnz == total_count);
   }
-  if (writerankfiles) {
-    printfilewithrank(localchunk, world.rank());
-  }
+#if DEBUG
+  printfilewithrank(localchunk, rank);
+#endif
+
+  return gathered_data;
 }

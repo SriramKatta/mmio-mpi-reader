@@ -10,19 +10,16 @@
 
 namespace po = boost::program_options;
 
-void parseCLA(int &argc, char *argv[], std::string &fname,
-              bool &writerankfiles) {
+void parseCLA(int &argc, char *argv[], std::string &fname) {
   po::options_description desc("Allowed Options", 100);
   // clang-format off
   desc.add_options()
     ("help,h", "produce help message")
-    ("file,F", po::value<std::string>(), "matrix file name (positional)")
-    ("Writefiles,W", po::value<std::string>()->default_value("false"), "write files");
+    ("file,F", po::value<std::string>(), "matrix file name (positional)");
   // clang-format on
 
   po::positional_options_description p;
-  p.add("file", 1);       // map the first positional argument to "file"
-  p.add("Writefiles", 2); // map the first positional argument to "file"
+  p.add("file", 1); // map the first positional argument to "file"
 
   po::variables_map vm;
   po::store(
@@ -36,10 +33,6 @@ void parseCLA(int &argc, char *argv[], std::string &fname,
     fmt::print("Error: No matrix file provided.\n");
     std::cout << desc << "\n";
     exit(1);
-  }
-
-  if (vm.count("Writefiles")) {
-    writerankfiles = (vm["Writefiles"].as<std::string>() == "true");
   }
 
   if (vm.count("help")) {
