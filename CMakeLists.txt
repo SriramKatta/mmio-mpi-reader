@@ -16,4 +16,4 @@ include(cmake/fmt.cmake)
 
 add_subdirectory(header)
 add_subdirectory(utilities)
-add_subdirectory(impl)
+add_subdirectory(example)

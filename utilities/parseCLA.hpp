@@ -10,7 +10,7 @@
 
 namespace po = boost::program_options;
 
-void parseCLA(int &argc, char *argv[], std::string &fname) {
+void parseCLA(int &argc, char *argv[], char*fname) {
   po::options_description desc("Allowed Options", 100);
   // clang-format off
   desc.add_options()
@@ -28,7 +28,7 @@ void parseCLA(int &argc, char *argv[], std::string &fname) {
   po::notify(vm);
 
   if (vm.count("file")) {
-    fname = vm["file"].as<std::string>();
+    fname = vm["file"].as<char*>();
   } else {
     fmt::print("Error: No matrix file provided.\n");
     std::cout << desc << "\n";

@@ -1,20 +1,22 @@
-#ifndef MMIO_MPI_HPP
-#define MMIO_MPI_HPP
+#ifndef MMIO_MPI_H
+#define MMIO_MPI_H
 #pragma once
 
-#include <string>
-#include <vector>
 #include <mpi.h>
 
-struct Entry {
+typedef struct {
     int row;
     int col;
     double val;
-    Entry(int r = 0, int c = 0, double v = 0.0) : row(r), col(c), val(v) {}
-    ~Entry(){}
-  };
-void printfilewithrank(std::vector<Entry> &, int);
-MPI_Datatype create_entry_type();
-std::vector<Entry> read_file(const std::string &);
+} Entry;
 
-#endif
+// Print the contents of a chunk to a rank-specific file
+void printfilewithrank(Entry *vec, int size, int rank);
+
+// Create a custom MPI datatype for the Entry struct
+MPI_Datatype create_entry_type();
+
+// Read and distribute a Matrix Market file using MPI (only rank 0 gets full data)
+Entry* read_file(const char *fname, int *total_size);
+
+#endif // MMIO_MPI_H
