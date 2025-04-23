@@ -14,11 +14,8 @@ int main(int argc, char *argv[]) {
   int size = 1;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  std::vector<double> res = read_file(fname);
-
-  if (0 == rank) {
-    
-  }
+  std::vector<Entry> res = read_file(fname);
+  printfilewithrank(res, rank);
 
   MPI_Finalize();
   return 0;

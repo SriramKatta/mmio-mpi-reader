@@ -1,16 +1,27 @@
 #include <fmt/format.h>
 #include <fstream>
-#include <mpi.h>
-#include <vector>
 
 #include "mmio-mpi.hpp"
 
-struct Entry {
-  int row;
-  int col;
-  double val;
-  Entry(int r, int c, double v) : row(r), col(c), val(v) {}
-};
+MPI_Datatype create_entry_type() {
+  MPI_Datatype entry_type;
+  int lengths[3] = {1, 1, 1};
+  MPI_Aint displacements[3];
+  Entry dummy(0, 0, 0.0);
+  MPI_Aint base_address;
+  MPI_Get_address(&dummy, &base_address);
+  MPI_Get_address(&dummy.row, &displacements[0]);
+  MPI_Get_address(&dummy.col, &displacements[1]);
+  MPI_Get_address(&dummy.val, &displacements[2]);
+
+  for (int i = 0; i < 3; ++i)
+    displacements[i] -= base_address;
+
+  MPI_Datatype types[3] = {MPI_INT, MPI_INT, MPI_DOUBLE};
+  MPI_Type_create_struct(3, lengths, displacements, types, &entry_type);
+  MPI_Type_commit(&entry_type);
+  return entry_type;
+}
 
 void printfilewithrank(std::vector<Entry> &vec, int rank) {
   std::string filename("rank");
@@ -72,28 +83,31 @@ std::vector<Entry> paralleldataload(std::ifstream &fin, size_t &nrows,
   return localchunk;
 }
 
-std::vector<Entry> read_file(const std::string &fname, bool writerankfiles) {
-  MPI_Offset data_offset = 0;
+std::vector<Entry> read_file(const std::string &fname) {
   MPI_Offset filesize;
   MPI_File fh;
   MPI_File_open(MPI_COMM_WORLD, fname.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL,
                 &fh);
   MPI_File_get_size(fh, &filesize);
   MPI_File_close(&fh);
+
   size_t nrows = 0, ncols = 0, nnz = 100;
   std::ifstream fin(fname);
   if (!fin.is_open()) {
     fmt::print("failed to open the file {}\n", fname);
-    exit(0);
+    MPI_Abort(MPI_COMM_WORLD, 1);
   }
-  int rank = 0;
-  int size = 1;
+
+  int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  MPI_Datatype entry_type = create_entry_type();
 
 #if BENCHMARK
   auto start = MPI_Wtime();
 #endif
+  MPI_Offset data_offset = 0;
   auto localchunk = paralleldataload(fin, nrows, ncols, nnz, rank, size,
                                      filesize, data_offset);
 #if BENCHMARK
@@ -106,15 +120,15 @@ std::vector<Entry> read_file(const std::string &fname, bool writerankfiles) {
   MPI_Gather(&sendcount, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, 0,
              MPI_COMM_WORLD);
 
-  // Step 2: Compute displacements on rank 0
-  std::vector<int> displs;
+  // Step 2: Compute displacements
+  std::vector<int> displs(size);
   int total_count = 0;
   if (rank == 0) {
-    displs.resize(size);
-    for (int i = 0; i < size; ++i) {
-      displs[i] = total_count;
-      total_count += recvcounts[i];
+    displs[0] = 0;
+    for (int i = 1; i < size; ++i) {
+      displs[i] = displs[i - 1] + recvcounts[i - 1];
     }
+    total_count = displs[size - 1] + recvcounts[size - 1];
   }
 
   std::vector<Entry> gathered_data;
@@ -122,19 +136,21 @@ std::vector<Entry> read_file(const std::string &fname, bool writerankfiles) {
     gathered_data.resize(total_count);
   }
 
-  MPI_Gatherv(localchunk.data(), sendcount, MPI_DOUBLE, gathered_data.data(),
-              recvcounts.data(), displs.data(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(localchunk.data(), sendcount, entry_type, gathered_data.data(),
+              recvcounts.data(), displs.data(), entry_type, 0, MPI_COMM_WORLD);
 
-  if (0 == rank) {
+  if (rank == 0) {
 #if BENCHMARK
     double et = end - start;
     fmt::print("time taken : {} | bandwidth : {}\n", et, filesize / et / 1e9);
 #endif
     fmt::print("test passed : {}\n", nnz == total_count);
   }
+
 #if DEBUG
   printfilewithrank(localchunk, rank);
 #endif
 
+  MPI_Type_free(&entry_type);
   return gathered_data;
 }
