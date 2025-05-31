@@ -3,8 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mmio-mpi.hpp"
-#include "parseCLA.hpp"
+#include "mmio-mpi.h"
 
 #define REACHED printf("rank %d reached %d\n", rank, __LINE__);
 
@@ -18,20 +17,15 @@ int main(int argc, char *argv[]) {
 
   // char fname[256] = {argv[1]};
   // parseCLA(argc, argv, fname);
-  REACHED;
   Entry *res = NULL;
   int res_size = 0;
-  REACHED;
 
+  res = read_file(argv[1],
+                  &res_size); // Must allocate and return entries + size
   if (rank == 0) {
-    REACHED;
-    res = read_file(argv[1],
-                    &res_size); // Must allocate and return entries + size
     printfilewithrank(res, res_size, rank);
-    REACHED;
-    free(res); // Don't forget to free memory
   }
-  REACHED;
+  free(res); 
 
   MPI_Finalize();
   return 0;

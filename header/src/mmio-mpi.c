@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mmio-mpi.hpp"
+#include "mmio-mpi.h"
 
 
 void printfilewithrank(Entry *vec, int size, int rank) {

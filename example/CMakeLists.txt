@@ -1,6 +1,4 @@
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.c)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE utilities) 
 target_link_libraries(${PROJECT_NAME} PRIVATE mmio-mpi) 
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt) 
-target_link_libraries(${PROJECT_NAME} PRIVATE MPI::MPI_CXX) 
+target_link_libraries(${PROJECT_NAME} PRIVATE MPI::MPI_C) 

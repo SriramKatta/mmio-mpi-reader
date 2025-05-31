@@ -10,10 +10,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 find_package(MPI REQUIRED)
 
-include(cmake/CPM.cmake)
-include(cmake/boost.cmake)
-include(cmake/fmt.cmake)
-
 add_subdirectory(header)
-add_subdirectory(utilities)
 add_subdirectory(example)
